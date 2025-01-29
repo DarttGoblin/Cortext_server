@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import os
 
 # Initialize backend bridge
 app = Flask(__name__)
@@ -39,4 +40,5 @@ def handle_request():
     return jsonify(response)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000)
+    port = int(os.environ.get("PORT", 3000))  # Railway's assigned port
+    app.run(host='0.0.0.0', port=port)
