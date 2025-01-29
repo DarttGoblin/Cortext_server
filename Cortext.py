@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 # Initialize backend bridge
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "https://darttgoblin.github.io"}})
 
 # Dictionary to map numeric values to emotion words
 emotions = {
