@@ -1,1 +1,0 @@
-web: python Cortext.py

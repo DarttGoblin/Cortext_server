@@ -1,49 +1,37 @@
-import pandas as pd
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pickle
-from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.svm import SVC
 
-# Load CSV files
-df_train = pd.read_csv("/content/Training.csv")
-df_test = pd.read_csv("/content/Test.csv")
-df_validation = pd.read_csv("/content/Validation.csv")
+with open("Cortext.pkl", "rb") as f:
+    model = pickle.load(f)
 
-# Prepare training, validation, and test data
-x_train = df_train['Text']
-y_train = df_train['Emotion']
-x_validation = df_validation['Text']
-y_validation = df_validation['Emotion']
-x_test = df_test['Text']
-y_test = df_test['Emotion']
+app = Flask(__name__)
+CORS(app)
 
-# Train the model
-print('SVM starts:')
-pipe_svm = Pipeline(steps=[
-    ('tfidf', TfidfVectorizer()),
-    ('svm', SVC(kernel='linear', probability=True))
-])
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    try:
+        data = request.get_json()
+        text = data.get("text", "")
 
-print('Looking for the best C parameter:')
-# Hyperparameter tuning using GridSearchCV
-param_grid = {'svm__C': [1, 10, 100]}  # Try different values for 'C'
-grid_search = GridSearchCV(pipe_svm, param_grid, cv=5, scoring='accuracy')
+        if not text.strip():
+            return jsonify({"error": "No text provided"}), 400
 
-# Fit model with training data
-grid_search.fit(x_train, y_train)
+        # Prediction
+        prediction = model.predict([text])[0]
+        probabilities = model.predict_proba([text])[0]
 
-# Best parameters and score from GridSearchCV
-print(f'Best parameters: {grid_search.best_params_}')
-print(f'Best cross-validation score: {grid_search.best_score_}')
+        # Convert numpy types to native Python
+        prediction = str(prediction)
+        probabilities = {str(cls): float(prob) for cls, prob in zip(model.classes_, probabilities)}
 
-# Evaluate on training, validation, and test sets
-print(f'Training score: {grid_search.score(x_train, y_train)}')
-print(f'Validation score: {grid_search.score(x_validation, y_validation)}')
-print(f'Test score: {grid_search.score(x_test, y_test)}')
+        return jsonify({
+            "prediction": prediction,
+            "probabilities": probabilities
+        })
 
-# Save the best model after GridSearchCV
-with open('Cortext.pkl', 'wb') as pipeline_file:
-    pickle.dump(grid_search.best_estimator_, pipeline_file)
-
-print("Model saved as 'Cortext.pkl'.")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+if __name__ == "__main__":
+    app.run(debug=True)
